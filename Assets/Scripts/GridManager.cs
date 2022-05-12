@@ -313,7 +313,7 @@ public class GridManager : MonoBehaviour
         m_visitedNodes.Clear();
         m_prevNodes.Clear();
 
-        foreach (var item in find8Neighbours(m_startPath.position))
+        foreach (var item in find4Neighbours(m_startPath.position))
         {
             Cost cost;
             cost.Gcost = 1;
@@ -325,7 +325,7 @@ public class GridManager : MonoBehaviour
         {
             var current = m_prevNodes.OrderBy(item => item.Value.Hcost + item.Value.Gcost 
             ).ToList()[0].Key;
-            Debug.Log(current.transform.position);
+            //Debug.Log(current.transform.position);
 
             if (current == null)
                 break;
@@ -333,7 +333,7 @@ public class GridManager : MonoBehaviour
                 break;
 
 
-            foreach (var item in find8Neighbours(current.transform.position))
+            foreach (var item in find4Neighbours(current.transform.position))
             {
                 if (m_prevNodes.ContainsKey(item))
                 {
@@ -404,7 +404,7 @@ public class GridManager : MonoBehaviour
         {
             for (int x = -1; x <= 1; x++)
             {
-                if (x == 0 || z == 0)
+                if ((x == 0 && z == -1) || (x == -1 && z == 0)  || (x == 1 && z == 0) || ((x == 0 && z == 1)))
                 {
                     Vector3 n = new Vector3(x * gridDim.x, 0, z * gridDim.y) + pos;
 
