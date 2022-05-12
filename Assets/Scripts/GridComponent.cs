@@ -15,8 +15,17 @@ public class GridComponent : MonoBehaviour
     private float popUpTime = 0.3f;
     [SerializeField]
     private Color selectColor=Color.black;
+    [SerializeField]
+    private GameObject parent;
+    [SerializeField]
+    private MeshRenderer gridTile;
 
-    private BlockType m_blockType=BlockType.None;
+    private Color m_defaultGridColor = Color.white;
+    private Color m_selectGridColor = Color.green;
+    private Color m_pathGridColor = Color.magenta;
+
+    private BlockType m_blockType = BlockType.None;
+    private GridType m_gridType = GridType.None;
 
     private Color m_redColor;
     private Color m_blueColor;
@@ -26,6 +35,8 @@ public class GridComponent : MonoBehaviour
         red.SetActive(false);
         blue.SetActive(false);
         m_blockType = BlockType.None;
+        m_gridType = GridType.None;
+
         m_redColor = red.GetComponent<MeshRenderer>().material.color;
         m_blueColor = blue.GetComponent<MeshRenderer>().material.color;
     }
@@ -150,5 +161,45 @@ public class GridComponent : MonoBehaviour
             });
         }
         m_blockType = BlockType.None;
+    }
+    public GameObject ReturnParent()
+    {
+        return parent;
+    }
+    public MeshRenderer ReturnGridTile()
+    {
+        return gridTile;
+    }
+    public void SelectGridTile()
+    {
+        m_gridType = GridType.Selected;
+        gridTile.material.color = m_selectGridColor;
+    }
+    public void HoverGridTile()
+    {
+        if(m_gridType==GridType.None)
+        {
+            gridTile.material.color = m_selectGridColor;
+        }
+
+    }
+    public void UnHoverGridTile()
+    {
+        if (m_gridType == GridType.None)
+        {
+            gridTile.material.color = m_defaultGridColor;
+
+        }
+    }
+    public void PaintGridTile()
+    {
+        m_gridType = GridType.Painted;
+        gridTile.material.color = m_pathGridColor;
+
+    }
+    public void ClearGridTile()
+    {
+        m_gridType = GridType.None;
+        gridTile.material.color = m_defaultGridColor;
     }
 }

@@ -613,7 +613,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   gridSize: {x: 20, y: 10}
-  gridDim: {x: 1.1, y: 1.1}
+  gridDim: {x: 2, y: 2}
   gridTile: {fileID: 6453574617183097634, guid: ab5912e269dfe4f4c90827938839cd29, type: 3}
   blockLayer:
     serializedVersion: 2
@@ -786,7 +786,7 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 310751023}
   m_LocalRotation: {x: 0.35274985, y: -0, z: -0, w: 0.9357177}
-  m_LocalPosition: {x: 10.2, y: 12.64, z: -6.4}
+  m_LocalPosition: {x: 16.76, y: 13.45, z: -7.25}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -1605,7 +1605,7 @@ MonoBehaviour:
   m_HandleRect: {fileID: 98892543}
   m_Direction: 2
   m_Value: 0
-  m_Size: 0.33333334
+  m_Size: 1
   m_NumberOfSteps: 0
   m_OnValueChanged:
     m_PersistentCalls:
@@ -2057,7 +2057,7 @@ MonoBehaviour:
   m_HandleRect: {fileID: 553877587}
   m_Direction: 2
   m_Value: 0
-  m_Size: 0.33333334
+  m_Size: 1
   m_NumberOfSteps: 0
   m_OnValueChanged:
     m_PersistentCalls:

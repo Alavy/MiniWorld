@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using System.Linq;
 
 public enum GameMode
 {
@@ -13,8 +14,21 @@ public enum BlockType
     Red,
     None
 }
+public enum GridType
+{
+    Selected,
+    Painted,
+    None
+}
+
 public class GridManager : MonoBehaviour
 {
+    private struct Cost
+    {
+        public float Hcost;
+        public float Gcost;
+    }
+
     [SerializeField]
     private Vector2 gridSize = new Vector2(20,10);
     [SerializeField]
@@ -39,19 +53,28 @@ public class GridManager : MonoBehaviour
     private GameMode m_gameMode = GameMode.Builder;
 
     private Vector3 m_prevMouse;
-    private Dictionary<Transform, GridComponent> m_gridElements;
+    private Dictionary<Vector3, GridComponent> m_gridElements;
     private bool m_disableInput = false;
 
     private Vector3 m_pastMouse;
     List<CombineInstance> m_redCombineMeshes;
     List<CombineInstance> m_blueCombineMeshes;
 
+    private Transform m_startPath;
+    private Transform m_endPath;
+    List<GridComponent> m_path = new List<GridComponent>();
+    Dictionary<GridComponent, Cost> m_prevNodes ;
+    Dictionary<GridComponent, bool> m_visitedNodes;
+
+
     private void Awake()
     {
         m_cam = Camera.main;
-        m_gridElements = new Dictionary<Transform, GridComponent>();
+        m_gridElements = new Dictionary<Vector3, GridComponent>();
         m_redCombineMeshes = new List<CombineInstance>();
         m_blueCombineMeshes = new List<CombineInstance>();
+        m_prevNodes = new Dictionary<GridComponent, Cost>();
+        m_visitedNodes = new Dictionary<GridComponent, bool>();
 
         generateGrid();
 
@@ -74,9 +97,12 @@ public class GridManager : MonoBehaviour
     }
     private void onGameModeChanged(GameMode gameMode)
     {
+        m_gameMode = gameMode;
+
         if (gameMode == GameMode.NonBuilder)
         {
 
+            m_currentSelectedComponent = null;
 
             foreach (var item in m_gridElements.Values)
             {
@@ -113,18 +139,23 @@ public class GridManager : MonoBehaviour
 
             foreach (var item in m_gridElements.Values)
             {
-                item.gameObject.SetActive(false);
+                item.ReturnParent().SetActive(false);
+                item.ClearGridTile();
+                item.UnHoverBlock();
             }
         }
         else if (gameMode == GameMode.Builder)
         {
             foreach (var item in m_gridElements.Values)
             {
-                item.gameObject.SetActive(true);
+                item.ReturnParent().SetActive(true);
+                item.ClearGridTile();
+                item.UnHoverBlock();
+
             }
             redCombineMeshHolder.SetActive(false);
             blueCombineMeshHolder.SetActive(false);
-
+            m_currentSelectedComponent = null;
         }
     }
     private void OnDisable()
@@ -143,20 +174,35 @@ public class GridManager : MonoBehaviour
         {
             GridComponent info;
             m_disableInput = false;
-
-            if (m_gridElements.TryGetValue(hit.transform,out info))
+            if (m_gameMode == GameMode.Builder)
             {
-                if(info != m_currentSelectedComponent)
+                if (m_gridElements.TryGetValue(hit.transform.position, out info))
                 {
-                    if (m_currentSelectedComponent != null)
+                    if (info != m_currentSelectedComponent)
                     {
-                        m_currentSelectedComponent.UnHoverBlock();
+                        if (m_currentSelectedComponent != null)
+                        {
+                            m_currentSelectedComponent.UnHoverBlock();
+                        }
+                        info.HoverBlock(m_spawnBlockType);
+                        m_currentSelectedComponent = info;
                     }
-                    info.HoverBlock(m_spawnBlockType);
-                    m_currentSelectedComponent = info;
                 }
-                
 
+            }else if (m_gameMode == GameMode.NonBuilder)
+            {
+                if (m_gridElements.TryGetValue(hit.transform.position, out info))
+                {
+                    if (info != m_currentSelectedComponent)
+                    {
+                        if (m_currentSelectedComponent != null)
+                        {
+                            m_currentSelectedComponent.UnHoverGridTile();
+                        }
+                        info.HoverGridTile();
+                        m_currentSelectedComponent = info;
+                    }
+                }
             }
         }
     }
@@ -170,11 +216,11 @@ public class GridManager : MonoBehaviour
         {
             for (int x = 0; x < gridSize.x; x++)
             {
-                Vector3 spawnPos = new Vector3(x * gridDim.x, 0, z * gridDim.y);
+                Vector3 spawnPos = new Vector3( x * gridDim.x, 0, z * gridDim.y);
                 GameObject obj = Instantiate(gridTile, transform);
                 obj.transform.position = spawnPos;
                 obj.transform.rotation = Quaternion.identity;
-                m_gridElements.Add(obj.transform, obj.GetComponent<GridComponent>());
+                m_gridElements.Add(obj.transform.position, obj.GetComponent<GridComponent>());
 
             }
         }
@@ -201,19 +247,181 @@ public class GridManager : MonoBehaviour
 
         if (Input.GetMouseButtonDown(0))
         {
-            if (m_currentSelectedComponent != null)
+            if (m_gameMode == GameMode.Builder)
             {
-                m_currentSelectedComponent.SetBlockType(m_spawnBlockType);
+                if (m_currentSelectedComponent != null)
+                {
+                    m_currentSelectedComponent.SetBlockType(m_spawnBlockType);
+                }
             }
+            else if (m_gameMode == GameMode.NonBuilder)
+            {
+                if (m_startPath == null)
+                {
+                    m_startPath = m_currentSelectedComponent.transform;
+                    m_currentSelectedComponent.SelectGridTile();
+                }
+                else if (m_startPath != null && m_endPath == null)
+                {
+                    foreach (var item in m_gridElements.Values)
+                    {
+                        item.ClearGridTile();
+                    }
+
+                    m_endPath = m_currentSelectedComponent.transform;
+                    m_currentSelectedComponent.SelectGridTile();
+                    findPath();
+                }
+                else if (m_startPath != null && m_endPath != null)
+                {
+                    foreach (var item in m_gridElements.Values)
+                    {
+                        item.ClearGridTile();
+                    }
+
+                    GridComponent grid;
+                    if (m_gridElements.TryGetValue(m_startPath.position, out grid))
+                    {
+                        grid.ClearGridTile();
+                    }
+                    m_startPath = m_endPath;
+                    m_endPath = m_currentSelectedComponent.transform;
+                    m_currentSelectedComponent.SelectGridTile();
+                    findPath();
+                }
+            }
+            
         }
         else if (Input.GetMouseButtonDown(1))
         {
-            if (m_currentSelectedComponent != null)
+            if (m_gameMode == GameMode.Builder)
             {
-                m_currentSelectedComponent.VanishBlock(m_spawnBlockType);
+                if (m_currentSelectedComponent != null)
+                {
+                    m_currentSelectedComponent.VanishBlock(m_spawnBlockType);
+                }
             }
+            
         }
 
 
     }
+
+    private void findPath()
+    {
+        m_path.Clear();
+        m_visitedNodes.Clear();
+        m_prevNodes.Clear();
+
+        foreach (var item in find8Neighbours(m_startPath.position))
+        {
+            Cost cost;
+            cost.Gcost = 1;
+            cost.Hcost = Vector3.Distance(item.transform.position, m_endPath.position);
+
+            m_prevNodes.Add(item,cost);
+        }
+        while (m_prevNodes.Count > 0)
+        {
+            var current = m_prevNodes.OrderBy(item => item.Value.Hcost + item.Value.Gcost 
+            ).ToList()[0].Key;
+            Debug.Log(current.transform.position);
+
+            if (current == null)
+                break;
+            if (current.transform == m_endPath)
+                break;
+
+
+            foreach (var item in find8Neighbours(current.transform.position))
+            {
+                if (m_prevNodes.ContainsKey(item))
+                {
+                    Cost cost;
+                    cost.Gcost = m_prevNodes[current].Gcost + 1;
+                    cost.Hcost = m_prevNodes[item].Hcost;
+
+                    m_prevNodes[item] = cost;
+                }
+                else
+                {
+                    if (!m_visitedNodes.ContainsKey(item))
+                    {
+                        Cost cost;
+                        cost.Gcost = m_prevNodes[current].Gcost + 1;
+                        cost.Hcost = Vector3.Distance(item.transform.position, m_endPath.position);
+
+                        m_prevNodes.Add(item, cost);
+                    }
+                }
+            }
+
+            m_visitedNodes.Add(current, true);
+            m_path.Add(current);
+            m_prevNodes.Remove(current);
+
+        }
+        m_gridElements[m_startPath.position].PaintGridTile();
+        foreach (var item in m_path)
+        {
+            item.PaintGridTile();
+        }
+        m_gridElements[m_endPath.position].PaintGridTile();
+
+    }
+    private List<GridComponent> find8Neighbours(Vector3 pos)
+    {
+        List<GridComponent> cmpts = new List<GridComponent>();
+
+        for (int z = -1; z <= 1; z++)
+        {
+            for (int x = -1; x <= 1; x++)
+            {
+                if (x != 0 || z != 0)
+                {
+                    Vector3 n = new Vector3(x * gridDim.x, 0, z * gridDim.y) + pos;
+
+                    GridComponent grid;
+                    if (m_gridElements.TryGetValue(n, out grid))
+                    {
+                        if (grid.GetBlockType() == BlockType.None)
+                        {
+                            cmpts.Add(grid);
+                        }
+                       
+                    }
+                }
+                
+            }
+        }
+        return cmpts;
+    }
+    private List<GridComponent> find4Neighbours(Vector3 pos)
+    {
+        List<GridComponent> cmpts = new List<GridComponent>();
+
+        for (int z = -1; z <= 1; z++)
+        {
+            for (int x = -1; x <= 1; x++)
+            {
+                if (x == 0 || z == 0)
+                {
+                    Vector3 n = new Vector3(x * gridDim.x, 0, z * gridDim.y) + pos;
+
+                    GridComponent grid;
+                    if (m_gridElements.TryGetValue(n, out grid))
+                    {
+                        if (grid.GetBlockType() == BlockType.None)
+                        {
+                            cmpts.Add(grid);
+                        }
+
+                    }
+                }
+
+            }
+        }
+        return cmpts;
+    }
+
 }
