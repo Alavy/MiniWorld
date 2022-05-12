@@ -11,6 +11,8 @@ public class GameEvents
     public static Action<GameMode> OnChooseModechangedEvent;
     public static void OnChooseModeChangedCalled(GameMode type) => OnChooseModechangedEvent?.Invoke(type);
 
+    public static Action<PathType> OnChoosePathTypechangedEvent;
+    public static void OnChoosePathTypeChangedCalled(PathType type) => OnChoosePathTypechangedEvent?.Invoke(type);
     public static Action OnCoverUIEnterEvent;
     public static void OnCoverUIEnterCalled() => OnCoverUIEnterEvent?.Invoke();
 

@@ -5,10 +5,12 @@ using UnityEngine;
 public class UIController : MonoBehaviour
 {
     [SerializeField]
-    private GameObject blockUI;
+    private GameObject selectObjblockUI;
+    [SerializeField]
+    private GameObject selectPathblockUI;
     private void Start()
     {
-        blockUI.SetActive(false);
+        selectObjblockUI.SetActive(false);
     }
     public void ChooseObject(int order)
     {
@@ -27,16 +29,31 @@ public class UIController : MonoBehaviour
     {
         if (order == 0)
         {
-            blockUI.SetActive(false);
+            selectObjblockUI.SetActive(false);
+            selectPathblockUI.SetActive(true);
             GameEvents.OnChooseModeChangedCalled(GameMode.Builder);
 
         }
         else if (order == 1)
         {
             GameEvents.OnChooseModeChangedCalled(GameMode.NonBuilder);
-            blockUI.SetActive(true);
+            selectObjblockUI.SetActive(true);
+            selectPathblockUI.SetActive(false);
+
         }
 
+    }
+    public void ChoosePathType(int order)
+    {
+        if (order == 0)
+        {
+            GameEvents.OnChoosePathTypeChangedCalled(PathType.Diagonal);
+
+        }
+        else if (order == 1)
+        {
+            GameEvents.OnChoosePathTypeChangedCalled(PathType.Straight);
+        }
     }
     public void CoverUIEnter()
     {

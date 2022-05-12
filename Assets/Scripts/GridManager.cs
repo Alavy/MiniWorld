@@ -20,7 +20,11 @@ public enum GridType
     Painted,
     None
 }
-
+public enum PathType
+{
+    Diagonal,
+    Straight
+}
 public class GridManager : MonoBehaviour
 {
     private struct Cost
@@ -51,6 +55,7 @@ public class GridManager : MonoBehaviour
 
     private BlockType m_spawnBlockType = BlockType.Red;
     private GameMode m_gameMode = GameMode.Builder;
+    private PathType m_pathType = PathType.Diagonal;
 
     private Vector3 m_prevMouse;
     private Dictionary<Vector3, GridComponent> m_gridElements;
@@ -84,6 +89,7 @@ public class GridManager : MonoBehaviour
         GameEvents.OnChooseObjectChangedEvent += onChooseObjectChanged;
         GameEvents.OnChooseModechangedEvent += onGameModeChanged;
         GameEvents.OnCoverUIEnterEvent += onCoverUIEnter;
+        GameEvents.OnChoosePathTypechangedEvent += onChoosePathType;
         //GameEvents.OnCoverUIExitEvent += onCoverUIExit;
     }
     private void onCoverUIEnter()
@@ -158,11 +164,23 @@ public class GridManager : MonoBehaviour
             m_currentSelectedComponent = null;
         }
     }
+    private void onChoosePathType(PathType type)
+    {
+        m_pathType = type;
+        foreach (var item in m_gridElements.Values)
+        {
+            item.ClearGridTile();
+        }
+        m_startPath = null;
+        m_endPath = null;
+    }
     private void OnDisable()
     {
         GameEvents.OnChooseObjectChangedEvent -= onChooseObjectChanged;
         GameEvents.OnChooseModechangedEvent -= onGameModeChanged;
         GameEvents.OnCoverUIEnterEvent -= onCoverUIEnter;
+        GameEvents.OnChoosePathTypechangedEvent -= onChoosePathType;
+
         //GameEvents.OnCoverUIExitEvent -= onCoverUIExit;
     }
 
@@ -313,7 +331,8 @@ public class GridManager : MonoBehaviour
         m_visitedNodes.Clear();
         m_prevNodes.Clear();
 
-        foreach (var item in find4Neighbours(m_startPath.position))
+        foreach (var item in  m_pathType==PathType.Diagonal ? 
+            find8Neighbours(m_startPath.position): find4Neighbours(m_startPath.position))
         {
             Cost cost;
             cost.Gcost = 1;
@@ -333,7 +352,7 @@ public class GridManager : MonoBehaviour
                 break;
 
 
-            foreach (var item in find4Neighbours(current.transform.position))
+            foreach (var item in m_pathType==PathType.Diagonal? find8Neighbours(current.transform.position): find4Neighbours(current.transform.position))
             {
                 if (m_prevNodes.ContainsKey(item))
                 {
