@@ -172,11 +172,17 @@ public class GridComponent : MonoBehaviour
     }
     public void SelectGridTile()
     {
+        if (m_blockType != BlockType.None)
+            return;
+
         m_gridType = GridType.Selected;
         gridTile.material.color = m_selectGridColor;
     }
     public void HoverGridTile()
     {
+        if (m_blockType != BlockType.None)
+            return;
+
         if(m_gridType==GridType.None)
         {
             gridTile.material.color = m_selectGridColor;
@@ -185,6 +191,9 @@ public class GridComponent : MonoBehaviour
     }
     public void UnHoverGridTile()
     {
+        if (m_blockType != BlockType.None)
+            return;
+
         if (m_gridType == GridType.None)
         {
             gridTile.material.color = m_defaultGridColor;

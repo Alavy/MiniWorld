@@ -207,11 +207,12 @@ public class GridManager : MonoBehaviour
                     }
                 }
 
-            }else if (m_gameMode == GameMode.NonBuilder)
+            }
+            else if (m_gameMode == GameMode.NonBuilder)
             {
                 if (m_gridElements.TryGetValue(hit.transform.position, out info))
                 {
-                    if (info != m_currentSelectedComponent)
+                    if (info != m_currentSelectedComponent && info.GetBlockType()==BlockType.None)
                     {
                         if (m_currentSelectedComponent != null)
                         {
@@ -274,6 +275,9 @@ public class GridManager : MonoBehaviour
             }
             else if (m_gameMode == GameMode.NonBuilder)
             {
+                if (m_currentSelectedComponent == null)
+                    return;
+
                 if (m_startPath == null)
                 {
                     m_startPath = m_currentSelectedComponent.transform;
