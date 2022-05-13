@@ -26,6 +26,7 @@ public class GridComponent : MonoBehaviour
 
     private BlockType m_blockType = BlockType.None;
     private GridType m_gridType = GridType.None;
+    private Occupied m_occupied = Occupied.No;
 
     private Color m_redColor;
     private Color m_blueColor;
@@ -34,8 +35,10 @@ public class GridComponent : MonoBehaviour
     {
         red.SetActive(false);
         blue.SetActive(false);
+
         m_blockType = BlockType.None;
         m_gridType = GridType.None;
+        m_occupied = Occupied.No;
 
         m_redColor = red.GetComponent<MeshRenderer>().material.color;
         m_blueColor = blue.GetComponent<MeshRenderer>().material.color;
@@ -210,5 +213,17 @@ public class GridComponent : MonoBehaviour
     {
         m_gridType = GridType.None;
         gridTile.material.color = m_defaultGridColor;
+    }
+    public Occupied Occupation()
+    {
+        return m_occupied;
+    }
+    public void SetOccupation()
+    {
+        m_occupied = Occupied.Yes;
+    }
+    public void FreeOccupation()
+    {
+        m_occupied = Occupied.No;
     }
 }

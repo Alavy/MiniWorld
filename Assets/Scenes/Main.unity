@@ -660,6 +660,8 @@ MonoBehaviour:
   redCombineMeshHolder: {fileID: 1301960217}
   blueCombineMeshHolder: {fileID: 945756375}
   moveSpeed: 20
+  agent: {fileID: 7966446462891494350, guid: 2d2620b927246bf449a5764e3a3b583d, type: 3}
+  agentCount: 5
 --- !u!4 &212006471
 Transform:
   m_ObjectHideFlags: 0
@@ -3979,7 +3981,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: Diagonal
+  m_text: Straight
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
   m_sharedMaterial: {fileID: 2180264, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
@@ -4502,9 +4504,9 @@ MonoBehaviour:
   m_Value: 0
   m_Options:
     m_Options:
-    - m_Text: Diagonal
-      m_Image: {fileID: 0}
     - m_Text: Straight
+      m_Image: {fileID: 0}
+    - m_Text: Diagonal
       m_Image: {fileID: 0}
   m_OnValueChanged:
     m_PersistentCalls:

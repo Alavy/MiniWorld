@@ -22,8 +22,13 @@ public enum GridType
 }
 public enum PathType
 {
-    Diagonal,
-    Straight
+    Straight,
+    Diagonal
+}
+public enum Occupied
+{
+    Yes,
+    No
 }
 public class GridManager : MonoBehaviour
 {
@@ -49,37 +54,55 @@ public class GridManager : MonoBehaviour
     [SerializeField]
     private float moveSpeed = 20f;
 
+    [SerializeField]
+    private GameObject agent;
+    [SerializeField]
+    private int agentCount = 5;
+
     private Camera m_cam;
 
     private GridComponent m_currentSelectedComponent;
 
     private BlockType m_spawnBlockType = BlockType.Red;
     private GameMode m_gameMode = GameMode.Builder;
-    private PathType m_pathType = PathType.Diagonal;
+    private PathType m_pathType = PathType.Straight;
 
     private Vector3 m_prevMouse;
     private Dictionary<Vector3, GridComponent> m_gridElements;
     private bool m_disableInput = false;
 
+    private Transform m_startPath;
+    private Transform m_endPath;
+
     private Vector3 m_pastMouse;
     List<CombineInstance> m_redCombineMeshes;
     List<CombineInstance> m_blueCombineMeshes;
+    public static GridManager Instance;
 
-    private Transform m_startPath;
-    private Transform m_endPath;
-    List<GridComponent> m_path = new List<GridComponent>();
-    Dictionary<GridComponent, Cost> m_prevNodes ;
-    Dictionary<GridComponent, bool> m_visitedNodes;
-
+    private Dictionary<Agent, GridComponent> m_targetPoints;
+    private Dictionary<Agent, GridComponent> m_startsPoints;
+    private List<Agent> m_agents;
 
     private void Awake()
     {
+        if (Instance == null)
+        {
+            Instance = this;
+
+        }
+        else
+        {
+            Destroy(gameObject);
+        }
+
         m_cam = Camera.main;
         m_gridElements = new Dictionary<Vector3, GridComponent>();
         m_redCombineMeshes = new List<CombineInstance>();
         m_blueCombineMeshes = new List<CombineInstance>();
-        m_prevNodes = new Dictionary<GridComponent, Cost>();
-        m_visitedNodes = new Dictionary<GridComponent, bool>();
+
+        m_targetPoints = new Dictionary<Agent, GridComponent>();
+        m_startsPoints = new Dictionary<Agent, GridComponent>();
+        m_agents = new List<Agent>();
 
         generateGrid();
 
@@ -104,6 +127,9 @@ public class GridManager : MonoBehaviour
     private void onGameModeChanged(GameMode gameMode)
     {
         m_gameMode = gameMode;
+
+        m_startsPoints.Clear();
+        m_targetPoints.Clear();
 
         if (gameMode == GameMode.NonBuilder)
         {
@@ -149,6 +175,11 @@ public class GridManager : MonoBehaviour
                 item.ClearGridTile();
                 item.UnHoverBlock();
             }
+            foreach (var item in m_agents)
+            {
+                item.gameObject.SetActive(true);
+                item.StartJourney();
+            }
         }
         else if (gameMode == GameMode.Builder)
         {
@@ -162,17 +193,37 @@ public class GridManager : MonoBehaviour
             redCombineMeshHolder.SetActive(false);
             blueCombineMeshHolder.SetActive(false);
             m_currentSelectedComponent = null;
+
+            foreach (var item in m_agents)
+            {
+                item.gameObject.SetActive(false);
+            }
         }
     }
     private void onChoosePathType(PathType type)
     {
         m_pathType = type;
+
+
+
         foreach (var item in m_gridElements.Values)
         {
             item.ClearGridTile();
         }
-        m_startPath = null;
-        m_endPath = null;
+
+        foreach (var item in m_agents)
+        {
+            item.gameObject.SetActive(false);
+        }
+
+        m_startsPoints.Clear();
+        m_targetPoints.Clear();
+
+        foreach (var item in m_agents)
+        {
+            item.gameObject.SetActive(true);
+            item.StartJourney();
+        }
     }
     private void OnDisable()
     {
@@ -210,6 +261,7 @@ public class GridManager : MonoBehaviour
             }
             else if (m_gameMode == GameMode.NonBuilder)
             {
+                /*
                 if (m_gridElements.TryGetValue(hit.transform.position, out info))
                 {
                     if (info != m_currentSelectedComponent && info.GetBlockType()==BlockType.None)
@@ -222,12 +274,22 @@ public class GridManager : MonoBehaviour
                         m_currentSelectedComponent = info;
                     }
                 }
+                */
             }
         }
     }
     private void Start()
     {
-
+        for (int i = 0; i < agentCount; i++)
+        {
+            Agent ag = Instantiate(agent).GetComponent<Agent>();
+          
+            if (ag != null)
+            {
+                ag.gameObject.SetActive(false);
+                m_agents.Add(ag);
+            }
+        }
     }
     private void generateGrid()
     {
@@ -275,6 +337,7 @@ public class GridManager : MonoBehaviour
             }
             else if (m_gameMode == GameMode.NonBuilder)
             {
+                /*
                 if (m_currentSelectedComponent == null)
                     return;
 
@@ -292,7 +355,7 @@ public class GridManager : MonoBehaviour
 
                     m_endPath = m_currentSelectedComponent.transform;
                     m_currentSelectedComponent.SelectGridTile();
-                    findPath();
+                    FindPath(m_startPath,m_endPath);
                 }
                 else if (m_startPath != null && m_endPath != null)
                 {
@@ -309,8 +372,10 @@ public class GridManager : MonoBehaviour
                     m_startPath = m_endPath;
                     m_endPath = m_currentSelectedComponent.transform;
                     m_currentSelectedComponent.SelectGridTile();
-                    findPath();
+                    FindPath(m_startPath, m_endPath);
                 }
+                */
+
             }
             
         }
@@ -326,70 +391,6 @@ public class GridManager : MonoBehaviour
             
         }
 
-
-    }
-
-    private void findPath()
-    {
-        m_path.Clear();
-        m_visitedNodes.Clear();
-        m_prevNodes.Clear();
-
-        foreach (var item in  m_pathType==PathType.Diagonal ? 
-            find8Neighbours(m_startPath.position): find4Neighbours(m_startPath.position))
-        {
-            Cost cost;
-            cost.Gcost = 1;
-            cost.Hcost = Vector3.Distance(item.transform.position, m_endPath.position);
-
-            m_prevNodes.Add(item,cost);
-        }
-        while (m_prevNodes.Count > 0)
-        {
-            var current = m_prevNodes.OrderBy(item => item.Value.Hcost + item.Value.Gcost 
-            ).ToList()[0].Key;
-            //Debug.Log(current.transform.position);
-
-            if (current == null)
-                break;
-            if (current.transform == m_endPath)
-                break;
-
-
-            foreach (var item in m_pathType==PathType.Diagonal? find8Neighbours(current.transform.position): find4Neighbours(current.transform.position))
-            {
-                if (m_prevNodes.ContainsKey(item))
-                {
-                    Cost cost;
-                    cost.Gcost = m_prevNodes[current].Gcost + 1;
-                    cost.Hcost = m_prevNodes[item].Hcost;
-
-                    m_prevNodes[item] = cost;
-                }
-                else
-                {
-                    if (!m_visitedNodes.ContainsKey(item))
-                    {
-                        Cost cost;
-                        cost.Gcost = m_prevNodes[current].Gcost + 1;
-                        cost.Hcost = Vector3.Distance(item.transform.position, m_endPath.position);
-
-                        m_prevNodes.Add(item, cost);
-                    }
-                }
-            }
-
-            m_visitedNodes.Add(current, true);
-            m_path.Add(current);
-            m_prevNodes.Remove(current);
-
-        }
-        m_gridElements[m_startPath.position].PaintGridTile();
-        foreach (var item in m_path)
-        {
-            item.PaintGridTile();
-        }
-        m_gridElements[m_endPath.position].PaintGridTile();
 
     }
     private List<GridComponent> find8Neighbours(Vector3 pos)
@@ -447,4 +448,163 @@ public class GridManager : MonoBehaviour
         return cmpts;
     }
 
+    public List<GridComponent> FindPath(Transform start, Transform end)
+    {
+        
+        List<GridComponent> m_path = new List<GridComponent>();
+
+        Dictionary<GridComponent, GridComponent> cameFrom = new Dictionary<GridComponent, GridComponent>();
+        Dictionary<GridComponent, Cost> m_prevNodes = new Dictionary<GridComponent, Cost>(); ;
+        Dictionary<GridComponent, bool> m_visitedNodes = new Dictionary<GridComponent, bool>();
+
+        GridComponent stComp;
+        if(m_gridElements.TryGetValue(start.position,out stComp))
+        {
+            Cost cost;
+            cost.Gcost = 0;
+            cost.Hcost = Vector3.Distance(stComp.transform.position, end.position);
+            m_prevNodes.Add(stComp, cost);
+
+        }
+        else
+        {
+            return m_path;
+        }
+        while (m_prevNodes.Count > 0)
+        {
+            var current = m_prevNodes.OrderBy(item => item.Value.Hcost + item.Value.Gcost
+            ).ToList()[0].Key;
+
+            if (current == null)
+            {
+                break;
+            }
+            if (current.transform == end)
+            {
+                //Debug.Log("yo baby"+ current.transform.position);
+                //Debug.Log("Camefrom "+ cameFrom.Count);
+                if (current != null)
+                {
+                    m_path.Add(current);
+                    while (cameFrom.ContainsKey(current))
+                    {
+                        current = cameFrom[current];
+                        m_path.Add(current);
+                    }
+                    m_path.Reverse();
+                }
+                m_gridElements[start.position].PaintGridTile();
+                foreach (var item in m_path)
+                {
+                    item.PaintGridTile();
+                }
+                return m_path;
+            }
+            List<GridComponent> neighbours = m_pathType == PathType.Diagonal
+                ? find8Neighbours(current.transform.position)
+                : find4Neighbours(current.transform.position);
+            
+            foreach (var item in neighbours)
+            {
+                if (m_prevNodes.ContainsKey(item))
+                {
+                    Cost cost;
+                    if(m_prevNodes[item].Gcost > m_prevNodes[current].Gcost + 1)
+                    {
+                        cost.Gcost = m_prevNodes[current].Gcost + 1;
+                        cameFrom[item] = current;
+                    }
+                    else
+                    {
+                        cost.Gcost = m_prevNodes[item].Gcost;
+                    }
+
+                    cost.Hcost = m_prevNodes[item].Hcost;
+
+                    m_prevNodes[item] = cost;
+                }
+                else if(!m_prevNodes.ContainsKey(item))
+                {
+                    if (!m_visitedNodes.ContainsKey(item))
+                    {
+                        Cost cost;
+                        cost.Gcost = m_prevNodes[current].Gcost + 1;
+                        cost.Hcost = Vector3.Distance(item.transform.position, end.position);
+                        cameFrom[item] = current;
+                        m_prevNodes.Add(item, cost);
+                    }
+                }
+            }
+            m_visitedNodes.Add(current, true);
+            m_prevNodes.Remove(current);
+        }
+
+        return null;
+    }
+    public GridComponent FindRandomTarget(Agent agent)
+    {
+        while (true)
+        {
+            int x = Random.Range(0, (int)gridSize.x);
+            int z = Random.Range(0, (int)gridSize.y);
+
+            Vector3 n = new Vector3(x * gridDim.x, 0, z * gridDim.y);
+            GridComponent info;
+            if (m_gridElements.TryGetValue(n, out info))
+            {
+                if (info.GetBlockType() == BlockType.None 
+                    && !m_targetPoints.ContainsKey(agent))
+                {
+                    if (!m_targetPoints.ContainsValue(info))
+                    {
+                        m_targetPoints.Add(agent, info);
+                        return info;
+                    }
+                }
+                else if (info.GetBlockType() == BlockType.None 
+                    && m_targetPoints.ContainsKey(agent))
+                {
+                    if (!m_targetPoints.ContainsValue(info))
+                    {
+                        m_targetPoints[agent] = info;
+                        return info;
+                    }
+                }
+            }
+        }
+    }
+    public GridComponent FindRandomStart(Agent agent)
+    {
+        while (true)
+        {
+            int x = Random.Range(0, (int)gridSize.x);
+            int z = Random.Range(0, (int)gridSize.y);
+
+            Vector3 n = new Vector3(x * gridDim.x, 0, z * gridDim.y);
+            GridComponent info;
+            if (m_gridElements.TryGetValue(n, out info))
+            {
+                if (info.GetBlockType() == BlockType.None 
+                    && !m_startsPoints.ContainsKey(agent))
+                {
+                    if (!m_startsPoints.ContainsValue(info))
+                    {
+                        m_startsPoints.Add(agent, info);
+                        return info;
+                    }
+                }
+                else if (info.GetBlockType() == BlockType.None 
+                    && m_startsPoints.ContainsKey(agent))
+                {
+                    if (!m_startsPoints.ContainsValue(info))
+                    {
+                        m_startsPoints[agent] = info;
+                        return info;
+                    }
+                }
+            }
+        }
+    }
+
+    
 }

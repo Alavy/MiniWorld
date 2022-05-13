@@ -47,12 +47,12 @@ public class UIController : MonoBehaviour
     {
         if (order == 0)
         {
-            GameEvents.OnChoosePathTypeChangedCalled(PathType.Diagonal);
+            GameEvents.OnChoosePathTypeChangedCalled(PathType.Straight);
 
         }
         else if (order == 1)
         {
-            GameEvents.OnChoosePathTypeChangedCalled(PathType.Straight);
+            GameEvents.OnChoosePathTypeChangedCalled(PathType.Diagonal);
         }
     }
     public void CoverUIEnter()
